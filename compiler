@@ -1,0 +1,25 @@
+# /usr/bin/env python3
+
+KEY_WORD = {
+    'ADD': 0x1,
+    'SUB': 0x2,
+    'MOV': 0x3,
+    'JZ': 0x4,
+    'POP': 0x5,
+    'PUSH': 0x6,
+    'CALL': 0x7,
+    'JUMP': 0x8,
+}
+
+
+class Lex:
+    def __init__(self):
+        pass
+
+
+def main(filename):
+    pass
+
+
+if __name__ == "__main__":
+    main()
