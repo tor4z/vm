@@ -7,17 +7,17 @@ import io
 
 '''
 INSREUCTION:
--------------------------------------------------------
-|  OPTERATOR  |        ARG1       |        ARG2       |
--------------------------------------------------------
-|  OPTERATOR  |  LOC  |    VAL1   |  LOC  |    VAL2   |
--------------------------------------------------------
-|    8 bit    | 1 bit |   7 bit   | 1 bit |   7 bit   |
--------------------------------------------------------
-|    8 bit    |       8 bit       |       8 bit       |
--------------------------------------------------------
-IF VALUE IS NUMBER SET LOC TO 1
-IF VALUE IS REGISTER SET LOC TO 0
+---------------------------------------------------------
+|  OPTERATOR  |        ARG1        |        ARG2        |
+---------------------------------------------------------
+|  OPTERATOR  |  ADDR  |    VAL1   |  ADDR  |    VAL2   |
+---------------------------------------------------------
+|    8 bit    |  1 bit |   7 bit   | 1 bit |   7 bit    |
+---------------------------------------------------------
+|    8 bit    |       8 bit        |       8 bit        |
+---------------------------------------------------------
+IF VALUE IS NUMBER SET ADDR TO 1
+IF VALUE IS REGISTER SET ADDR TO 0
 '''
 
 
@@ -103,7 +103,7 @@ class NumberToken(Token):
             value = int(value)
         if value >= 0x80:
             raise ValueError(f'number too big, shoule be less than { 0x80 }')
-        # Set LOC to 1
+        # Set ADDR to 1
         value = value | 0x80
         super().__init__(None, TokenType.NUM, value, *args, **kwargs)
 
@@ -297,7 +297,8 @@ class Compiler:
                 label = self.find_label(arg1)
                 if label is None:
                     raise CompilerExp(f'unrecognised label { arg1.name }')
-                self.write_bin([ins.value, label.pos, 0])
+                number = NumberToken(label.pos)
+                self.write_bin([ins.value, number.value, 0])
             else:
                 self.write_bin([ins.value, arg1.value, 0])
         else:
