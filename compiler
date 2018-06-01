@@ -6,14 +6,22 @@ import io
 
 
 '''
----------------------------------------------------
-| INSTRUCTION |      REG1       |   REG2 or NUM   |
----------------------------------------------------
-|   8 bit     |      8 bit      |      8 bit      |
----------------------------------------------------
+INSREUCTION:
+-------------------------------------------------------
+|  OPTERATOR  |        ARG1       |        ARG2       |
+-------------------------------------------------------
+|  OPTERATOR  |  LOC  |    VAL1   |  LOC  |    VAL2   |
+-------------------------------------------------------
+|    8 bit    | 1 bit |   7 bit   | 1 bit |   7 bit   |
+-------------------------------------------------------
+|    8 bit    |       8 bit       |       8 bit       |
+-------------------------------------------------------
+IF VALUE IS NUMBER LOC EQUAL TO 1
+IF VALUE IS REGISTER LOC EQUAL TO 0
 '''
 
-INSTRUCTIONS = [('ADD',   0x01),
+
+OPERATOR = [('ADD',   0x01),
                 ('SUB',   0x02),
                 ('MOV',   0x03),
                 ('JZ',    0x04),
@@ -45,7 +53,7 @@ REGISTERS = [('R0', 0x01),
 
 
 class TokenType(IntEnum):
-    INS = auto()
+    OP = auto()
     REG = auto()
     NUM = auto()
     LAB = auto()
@@ -75,23 +83,27 @@ class Token:
     __repr__ = __str__
 
 
-class InstructionToken(Token):
+class OperatorToken(Token):
     def __init__(self, name, *args, **kwargs):
         name = name.upper()
-        super().__init__(name, TokenType.INS, None, *args, **kwargs)
-        self._check_ins()
+        super().__init__(name, TokenType.OP, None, *args, **kwargs)
+        self._check_op()
 
-    def _check_ins(self):
-        for ins in INSTRUCTIONS:
+    def _check_op(self):
+        for ins in OPERATOR:
             if self.name == ins[0]:
                 self.value = ins[1]
                 return
-        raise CompilerExp(f'unrecognised instruction { self.name }')
+        raise CompilerExp(f'unrecognised oprator { self.name }')
 
 class NumberToken(Token):
     def __init__(self, value, *args, **kwargs):
         if not isinstance(value, int):
             value = int(value)
+        if value >= 0x80:
+            raise ValueError(f'number too big, shoule be less than { 0x80 }')
+        # Set LOC to 1
+        value = value | 0x80
         super().__init__(None, TokenType.NUM, value, *args, **kwargs)
 
 
@@ -116,7 +128,7 @@ class LabelToken(Token):
 
 
 _NAME_PAT = r"[a-zA-Z_]\w*"
-_INSTRUCTION_PAT = r"(?P<instruction>" + _NAME_PAT + r")"
+_OPERATOR_PAT = r"(?P<operator>" + _NAME_PAT + r")"
 _CODE_PATS = [
     # Label definition
     (re.compile(r'''\s*                             # Optional space at begin
@@ -126,7 +138,7 @@ _CODE_PATS = [
                ''', re.ASCII | re.VERBOSE), CodeType.LAB),     
     # Two Address instruction
     (re.compile(r'''\s*                             # Optional Space at begin
-               ''' + _INSTRUCTION_PAT + r'''         # Instruction name
+               ''' + _OPERATOR_PAT + r'''         # Operator name
                \s+                                  # More then one Space sep
                (?P<arg1>''' + _NAME_PAT + r''')      # Register1 name
                \s+                                  # More then one Space sep
@@ -135,14 +147,14 @@ _CODE_PATS = [
                ''', re.ASCII | re.VERBOSE), CodeType.INS2),
     # One Address instruction
     (re.compile(r'''\s*                             # Optional Space at begin
-               ''' + _INSTRUCTION_PAT +r'''          # Instruction name
+               ''' + _OPERATOR_PAT +r'''          # Operator name
                \s+                                  # More then one Space sep
                (?P<arg>''' + _NAME_PAT +r''')        # Register name
                \s*                                  # Optional Space at end
                ''', re.ASCII | re.VERBOSE), CodeType.INS1),
     # Zero address instruction
     (re.compile(r'''\s*                             # Optional space at begin
-               ''' + _INSTRUCTION_PAT + r'''         # Instruction name
+               ''' + _OPERATOR_PAT + r'''         # Operator name
                \s*                                  # Optional space at end
                ''', re.ASCII | re.VERBOSE), CodeType.INS0),
     # Comment
@@ -184,11 +196,11 @@ class Lexer:
                                        line=self.lineno)
                 return label, CodeType.LAB
             elif ct is CodeType.INS0:
-                ins = InstructionToken(m.group('instruction'),
+                ins = OperatorToken(m.group('operator'),
                                        line=self.lineno)
                 return ins, CodeType.INS0
             elif ct is CodeType.INS1:
-                ins = InstructionToken(m.group('instruction'),
+                ins = OperatorToken(m.group('operator'),
                                        line=self.lineno)
                 try:
                     arg = RegisterToken(m.group('arg'),
@@ -198,7 +210,7 @@ class Lexer:
                                     line=self.lineno)
                 return (ins, arg), CodeType.INS1
             elif ct is CodeType.INS2:
-                ins = InstructionToken(m.group('instruction'),
+                ins = OperatorToken(m.group('operator'),
                                        line=self.lineno)
                 arg1 = RegisterToken(m.group('arg1'),
                                         line=self.lineno)
