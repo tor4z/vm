@@ -21,7 +21,7 @@ IF VALUE IS REGISTER SET LOC TO 0
 '''
 
 
-OPERATORS = [('ADD',  0x01),
+OPERATORS = [('ADD',   0x01),
              ('SUB',   0x02),
              ('MOV',   0x03),
              ('JZ',    0x04),
