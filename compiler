@@ -31,7 +31,8 @@ OPERATORS = [('ADD',   0x01),
              ('JUMP',  0x08),
              ('DIS',   0x09),
              ('LOAD',  0x0a),
-             ('STORE', 0x0b)]
+             ('STORE', 0x0b),
+             ('RET',   0x0c)]
 
 
 JUMPS = ['JZ', 'JUMP']
