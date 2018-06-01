@@ -16,22 +16,22 @@ INSREUCTION:
 -------------------------------------------------------
 |    8 bit    |       8 bit       |       8 bit       |
 -------------------------------------------------------
-IF VALUE IS NUMBER LOC EQUAL TO 1
-IF VALUE IS REGISTER LOC EQUAL TO 0
+IF VALUE IS NUMBER SET LOC TO 1
+IF VALUE IS REGISTER SET LOC TO 0
 '''
 
 
-OPERATOR = [('ADD',   0x01),
-                ('SUB',   0x02),
-                ('MOV',   0x03),
-                ('JZ',    0x04),
-                ('POP',   0x05),
-                ('PUSH',  0x06),
-                ('CALL',  0x07),
-                ('JUMP',  0x08),
-                ('DIS',   0x09),
-                ('LOAD',  0x0a),
-                ('STORE', 0x0b)]
+OPERATORS = [('ADD',  0x01),
+             ('SUB',   0x02),
+             ('MOV',   0x03),
+             ('JZ',    0x04),
+             ('POP',   0x05),
+             ('PUSH',  0x06),
+             ('CALL',  0x07),
+             ('JUMP',  0x08),
+             ('DIS',   0x09),
+             ('LOAD',  0x0a),
+             ('STORE', 0x0b)]
 
 
 JUMPS = ['JZ', 'JUMP']
@@ -67,7 +67,7 @@ class CodeType(IntEnum):
     INS1 = auto()
     INS2 = auto()
     COMM = auto()
-    BLK = auto() 
+    BLK = auto()
 
 
 class Token:
@@ -79,7 +79,7 @@ class Token:
 
     def __str__(self):
         return self.name or ''
-    
+
     __repr__ = __str__
 
 
@@ -90,11 +90,12 @@ class OperatorToken(Token):
         self._check_op()
 
     def _check_op(self):
-        for ins in OPERATOR:
+        for ins in OPERATORS:
             if self.name == ins[0]:
                 self.value = ins[1]
                 return
         raise CompilerExp(f'unrecognised oprator { self.name }')
+
 
 class NumberToken(Token):
     def __init__(self, value, *args, **kwargs):
@@ -132,37 +133,37 @@ _OPERATOR_PAT = r"(?P<operator>" + _NAME_PAT + r")"
 _CODE_PATS = [
     # Label definition
     (re.compile(r'''\s*                             # Optional space at begin
-               (?P<label>''' + _NAME_PAT + r''')     # Section name
+               (?P<label>''' + _NAME_PAT + r''')    # Section name
                \s*                                  # Optional space sep
                :                                    # End with ':'
-               ''', re.ASCII | re.VERBOSE), CodeType.LAB),     
+               ''', re.ASCII | re.VERBOSE), CodeType.LAB),
     # Two Address instruction
     (re.compile(r'''\s*                             # Optional Space at begin
-               ''' + _OPERATOR_PAT + r'''         # Operator name
+               ''' + _OPERATOR_PAT + r'''           # Operator name
                \s+                                  # More then one Space sep
-               (?P<arg1>''' + _NAME_PAT + r''')      # Register1 name
+               (?P<arg1>''' + _NAME_PAT + r''')     # Register1 name
                \s+                                  # More then one Space sep
-               (?P<arg2>''' + _NAME_PAT + r'''|\d+)  # Register2 name or number
+               (?P<arg2>''' + _NAME_PAT + r'''|\d+) # Register2 name or number
                \s*                                  # Optional Space at end
                ''', re.ASCII | re.VERBOSE), CodeType.INS2),
     # One Address instruction
     (re.compile(r'''\s*                             # Optional Space at begin
-               ''' + _OPERATOR_PAT +r'''          # Operator name
+               ''' + _OPERATOR_PAT + r'''           # Operator name
                \s+                                  # More then one Space sep
-               (?P<arg>''' + _NAME_PAT +r''')        # Register name
+               (?P<arg>''' + _NAME_PAT + r''')      # Register name
                \s*                                  # Optional Space at end
                ''', re.ASCII | re.VERBOSE), CodeType.INS1),
     # Zero address instruction
     (re.compile(r'''\s*                             # Optional space at begin
-               ''' + _OPERATOR_PAT + r'''         # Operator name
+               ''' + _OPERATOR_PAT + r'''           # Operator name
                \s*                                  # Optional space at end
                ''', re.ASCII | re.VERBOSE), CodeType.INS0),
     # Comment
-    (re.compile(r'''\s*                              # Optional space at begin
-                ;.*                                   # Anything begin with '//'
+    (re.compile(r'''\s*                             # Optional space at begin
+                ;.*                                 # Anything begin with '//'
                 ''', re.ASCII | re.VERBOSE), CodeType.COMM),
     # Blank line
-    (re.compile(r'''\s*?\n                              # End with '\n'
+    (re.compile(r'''\s*?\n                          # End with '\n'
                 ''', re.ASCII | re.VERBOSE), CodeType.BLK)
 ]
 
@@ -193,27 +194,27 @@ class Lexer:
 
             if ct is CodeType.LAB:
                 label = LabelToken(m.group('label'),
-                                       line=self.lineno)
+                                   line=self.lineno)
                 return label, CodeType.LAB
             elif ct is CodeType.INS0:
                 ins = OperatorToken(m.group('operator'),
-                                       line=self.lineno)
+                                    line=self.lineno)
                 return ins, CodeType.INS0
             elif ct is CodeType.INS1:
                 ins = OperatorToken(m.group('operator'),
-                                       line=self.lineno)
+                                    line=self.lineno)
                 try:
                     arg = RegisterToken(m.group('arg'),
                                         line=self.lineno)
                 except CompilerExp:
                     arg = LabelToken(m.group('arg'),
-                                    line=self.lineno)
+                                     line=self.lineno)
                 return (ins, arg), CodeType.INS1
             elif ct is CodeType.INS2:
                 ins = OperatorToken(m.group('operator'),
-                                       line=self.lineno)
+                                    line=self.lineno)
                 arg1 = RegisterToken(m.group('arg1'),
-                                        line=self.lineno)
+                                     line=self.lineno)
                 m_arg2 = m.group('arg2')
                 if m_arg2.isdigit():
                     arg2 = NumberToken(m_arg2, line=self.lineno)
