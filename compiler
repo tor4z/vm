@@ -160,7 +160,7 @@ _CODE_PATS = [
                ''', re.ASCII | re.VERBOSE), CodeType.INS0),
     # Comment
     (re.compile(r'''\s*                             # Optional space at begin
-                ;.*                                 # Anything begin with '//'
+                ;.*                                 # Anything begin with ';'
                 ''', re.ASCII | re.VERBOSE), CodeType.COMM),
     # Blank line
     (re.compile(r'''\s*?\n                          # End with '\n'
