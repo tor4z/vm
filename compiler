@@ -1,25 +1,323 @@
-# /usr/bin/env python3
-
-KEY_WORD = {
-    'ADD': 0x1,
-    'SUB': 0x2,
-    'MOV': 0x3,
-    'JZ': 0x4,
-    'POP': 0x5,
-    'PUSH': 0x6,
-    'CALL': 0x7,
-    'JUMP': 0x8,
-}
+#!/usr/bin/env python3
+from enum import IntEnum, auto
+import argparse
+import re
+import io
 
 
-class Lex:
-    def __init__(self):
-        pass
+'''
+---------------------------------------------------
+| INSTRUCTION |      REG1       |   REG2 or NUM   |
+---------------------------------------------------
+|   8 bit     |      8 bit      |      8 bit      |
+---------------------------------------------------
+'''
+
+INSTRUCTIONS = [('ADD',   0x01),
+                ('SUB',   0x02),
+                ('MOV',   0x03),
+                ('JZ',    0x04),
+                ('POP',   0x05),
+                ('PUSH',  0x06),
+                ('CALL',  0x07),
+                ('JUMP',  0x08),
+                ('DIS',   0x09),
+                ('LOAD',  0x0a),
+                ('STORE', 0x0b)]
 
 
-def main(filename):
+JUMPS = ['JZ', 'JUMP']
+
+
+REGISTERS = [('R0', 0x01),
+             ('R1', 0x02),
+             ('R2', 0x03),
+             ('R3', 0x04),
+             ('R4', 0x05),
+             ('R5', 0x06),
+             ('R6', 0x07),
+             ('R7', 0x08),
+             ('SP', 0x09),
+             ('DR', 0x0a),
+             ('AR', 0x0b),
+             ('PC', 0x0c),
+             ('IR', 0x0d)]
+
+
+class TokenType(IntEnum):
+    INS = auto()
+    REG = auto()
+    NUM = auto()
+    LAB = auto()
+    SEC = auto()
+
+
+class CodeType(IntEnum):
+    SEC = auto()
+    LAB = auto()
+    INS0 = auto()
+    INS1 = auto()
+    INS2 = auto()
+    COMM = auto()
+    BLK = auto() 
+
+
+class Token:
+    def __init__(self, name, type, value, line):
+        self.name = name
+        self.type = type
+        self.value = value
+        self.lineno = line
+
+    def __str__(self):
+        return self.name or ''
+    
+    __repr__ = __str__
+
+
+class InstructionToken(Token):
+    def __init__(self, name, *args, **kwargs):
+        name = name.upper()
+        super().__init__(name, TokenType.INS, None, *args, **kwargs)
+        self._check_ins()
+
+    def _check_ins(self):
+        for ins in INSTRUCTIONS:
+            if self.name == ins[0]:
+                self.value = ins[1]
+                return
+        raise CompilerExp(f'unrecognised instruction { self.name }')
+
+class NumberToken(Token):
+    def __init__(self, value, *args, **kwargs):
+        if not isinstance(value, int):
+            value = int(value)
+        super().__init__(None, TokenType.NUM, value, *args, **kwargs)
+
+
+class RegisterToken(Token):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name, TokenType.REG, None, *args, **kwargs)
+        self._check_reg()
+
+    def _check_reg(self):
+        for reg in REGISTERS:
+            if self.name == reg[0]:
+                self.value = reg[1]
+                return
+        raise CompilerExp(f'unrecognised register { self.name }')
+
+
+class LabelToken(Token):
+    def __init__(self, name, pos=0, *args, **kwargs):
+        self.pos = pos
+        self.value = self.pos
+        super().__init__(name, TokenType.LAB, None, *args, **kwargs)
+
+
+_NAME_PAT = r"[a-zA-Z_]\w*"
+_INSTRUCTION_PAT = r"(?P<instruction>" + _NAME_PAT + r")"
+_CODE_PATS = [
+    # Label definition
+    (re.compile(r'''\s*                             # Optional space at begin
+               (?P<label>''' + _NAME_PAT + r''')     # Section name
+               \s*                                  # Optional space sep
+               :                                    # End with ':'
+               ''', re.ASCII | re.VERBOSE), CodeType.LAB),     
+    # Two Address instruction
+    (re.compile(r'''\s*                             # Optional Space at begin
+               ''' + _INSTRUCTION_PAT + r'''         # Instruction name
+               \s+                                  # More then one Space sep
+               (?P<arg1>''' + _NAME_PAT + r''')      # Register1 name
+               \s+                                  # More then one Space sep
+               (?P<arg2>''' + _NAME_PAT + r'''|\d+)  # Register2 name or number
+               \s*                                  # Optional Space at end
+               ''', re.ASCII | re.VERBOSE), CodeType.INS2),
+    # One Address instruction
+    (re.compile(r'''\s*                             # Optional Space at begin
+               ''' + _INSTRUCTION_PAT +r'''          # Instruction name
+               \s+                                  # More then one Space sep
+               (?P<arg>''' + _NAME_PAT +r''')        # Register name
+               \s*                                  # Optional Space at end
+               ''', re.ASCII | re.VERBOSE), CodeType.INS1),
+    # Zero address instruction
+    (re.compile(r'''\s*                             # Optional space at begin
+               ''' + _INSTRUCTION_PAT + r'''         # Instruction name
+               \s*                                  # Optional space at end
+               ''', re.ASCII | re.VERBOSE), CodeType.INS0),
+    # Comment
+    (re.compile(r'''\s*                              # Optional space at begin
+                ;.*                                   # Anything begin with '//'
+                ''', re.ASCII | re.VERBOSE), CodeType.COMM),
+    # Blank line
+    (re.compile(r'''\s*?\n                              # End with '\n'
+                ''', re.ASCII | re.VERBOSE), CodeType.BLK)
+]
+
+
+class Lexer:
+    def __init__(self, filename=None, text=None):
+        if filename is None and text is None:
+            raise CompilerExp('no input')
+        if filename is not None:
+            self.fp = open(filename, "r")
+        if text is not None:
+            self.fp = io.TextIOWrapper(io.StringIO(text))
+        self.lineno = 0
+
+    def readline(self):
+        self.lineno += 1
+        return self.fp.readline()
+
+    def parse_line(self):
+        line = self.readline()
+        if line is '':
+            return None
+
+        for regx, ct in _CODE_PATS:
+            m = regx.match(line)
+            if m is None:
+                continue
+
+            if ct is CodeType.LAB:
+                label = LabelToken(m.group('label'),
+                                       line=self.lineno)
+                return label, CodeType.LAB
+            elif ct is CodeType.INS0:
+                ins = InstructionToken(m.group('instruction'),
+                                       line=self.lineno)
+                return ins, CodeType.INS0
+            elif ct is CodeType.INS1:
+                ins = InstructionToken(m.group('instruction'),
+                                       line=self.lineno)
+                try:
+                    arg = RegisterToken(m.group('arg'),
+                                        line=self.lineno)
+                except CompilerExp:
+                    arg = LabelToken(m.group('arg'),
+                                    line=self.lineno)
+                return (ins, arg), CodeType.INS1
+            elif ct is CodeType.INS2:
+                ins = InstructionToken(m.group('instruction'),
+                                       line=self.lineno)
+                arg1 = RegisterToken(m.group('arg1'),
+                                        line=self.lineno)
+                m_arg2 = m.group('arg2')
+                if m_arg2.isdigit():
+                    arg2 = NumberToken(m_arg2, line=self.lineno)
+                else:
+                    arg2 = RegisterToken(m_arg2,
+                                         line=self.lineno)
+                return (ins, arg1, arg2), CodeType.INS2
+            elif ct is CodeType.COMM or ct is CodeType.BLK:
+                return None, ct
+            else:
+                raise CompilerExp('syntax error')
+
+    def close(self):
+        self.fp.close()
+
+
+class Compiler:
+    def __init__(self, lexer, output):
+        self.out = open(output, 'wb')
+        self.lexer = lexer
+        self._labels = {}
+        self._pos = 0
+
+    def start(self):
+        while True:
+            result = self.lexer.parse_line()
+            if result is None:
+                return
+            tokens, ct = result
+            if ct is CodeType.LAB:
+                label = tokens
+                label.pos = self._pos
+                self._labels[label.name] = label
+            elif ct in [CodeType.INS0, CodeType.INS1, CodeType.INS2]:
+                self._solve_ins(tokens)
+            elif ct in [CodeType.BLK, CodeType.COMM]:
+                continue
+            else:
+                raise CompilerExp('unrecognised parse result')
+            self._pos += 1
+
+    def _solve_ins(self, tokens):
+        if not tokens:
+            raise CompilerExp('unrecognised parse result')
+
+        if isinstance(tokens, tuple):
+            tokens_len = len(tokens)
+        else:
+            tokens_len = 1
+
+        if tokens_len == 1:
+            ins = tokens
+            arg1 = None
+            arg2 = None
+        elif tokens_len == 2:
+            ins, arg1 = tokens
+            arg2 = None
+        elif tokens_len == 3:
+            ins, arg1, arg2 = tokens
+        else:
+            raise CompilerExp('unrecognised parse result')
+
+        self.write_ins(ins, arg1, arg2)
+
+    def find_label(self, token):
+        if isinstance(token, str):
+            name = token
+        elif isinstance(token, Token):
+            name = token.name
+        else:
+            raise TypeError('string or token required')
+
+        return self._labels.get(name)
+
+    def write_ins(self, ins, arg1=None, arg2=None):
+        if arg1 is None and arg2 is None:
+            self.write_bin([ins.value, 0, 0])
+        elif arg2 is None:
+            if ins.name in JUMPS:
+                label = self.find_label(arg1)
+                if label is None:
+                    raise CompilerExp(f'unrecognised label { arg1.name }')
+                self.write_bin([ins.value, label.pos, 0])
+            else:
+                self.write_bin([ins.value, arg1.value, 0])
+        else:
+            self.write_bin([ins.value, arg1.value, arg2.value])
+
+    def write_bin(self, ints):
+        if not isinstance(ints, list):
+            raise TypeError('List required')
+        print("instruction", ints)
+        self.out.write(bytes(ints))
+
+    def close(self):
+        self.out.close()
+        self.lexer.close()
+
+
+def main(source, output):
+    lexer = Lexer(source)
+    compiler = Compiler(lexer, output)
+    compiler.start()
+    compiler.close()
+
+
+class CompilerExp(Exception):
     pass
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input')
+    parser.add_argument('-o', default='a.out', dest='output')
+    result = parser.parse_args()
+
+    source = result.input
+    output = result.output
+    main(source, output)
