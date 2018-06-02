@@ -42,7 +42,7 @@ void load_code(struct ram *ram, const char *filename)
 			fprintf(stderr, "file toot big to read whole file\n");
 			break;
 		}
-		memecpy(ram->m, buff, n);
+		memecpy(ram->m + MAX_STACK, buff, n);
 	}
 
 	fclose(fp);
