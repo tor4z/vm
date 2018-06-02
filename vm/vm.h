@@ -2,8 +2,8 @@
 #define _VM_H
 
 #define MAX_RAM 256
-#define REG_COUNT 13
-#define MAX_STACK 128
+#define REG_COUNT 14
+#define MAX_STACK 32
 
 /* PSW:
 -----------------------------------------------------------------
@@ -35,6 +35,7 @@ N: Negative flag
 #define AR_ADDR 0x0b
 #define PC_ADDR 0x0c
 #define IR_ADDR 0x0d
+#define BP_ADDR 0x0e
 
 
 enum reg {
@@ -50,13 +51,15 @@ enum reg {
 	DR = 0x0a,
 	AR = 0x0b,
 	PC = 0x0c,
-	IR = 0x0d
+	IR = 0x0d,
+	BP = 0x0e
 }
 
 
 // Control bus status
-#define LOAD 0x01
-#define STORE 0x02
+#define LOAD 0x01   // load data from m to db
+#define STORE 0x02  // store data from db to m
+
 
 struct bus {
 	char ab;
@@ -77,6 +80,7 @@ struct cpu {
 	char registers[REG_COUNT + 1];
 	char psw;
 	struct bus *bus;
+	struct rom *rom;
 };
 
 
@@ -92,6 +96,11 @@ struct ram {
 };
 
 
-char stack[MAX_STACK];
+struct vm {
+	struct cpu *cpu;
+	struct ram *ram;
+	struct rom *rom;
+	struct bus *bus;
+};
 
 #endif // _VM_H
