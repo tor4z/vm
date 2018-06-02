@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "rom.h"
 #include "vm.h"
 
@@ -280,7 +281,37 @@ int op_store(struct cpu* cpu, struct ins *ins)
 }
 
 
-void init_cpu(struct cpu *cpu)
+struct rom *new_rom()
 {
+    struct rom *rom;
+    rom = (struct rom*)malloc(sizeof(struct rom));
+    if(rom == NULL) {
+        fprintf(stderr, "Alloc memory to rom error\n");
+        return NULL;
+    }
 
+    return rom;
+}
+
+
+void free_rom(struct rom *rom)
+{
+    free(rom);
+}
+
+
+void init_rom(struct rom *rom)
+{
+    rom->op[ADD] = op_add;
+    rom->op[SUB] = op_sub;
+    rom->op[MOV] = op_mov;
+    rom->op[JZ] = op_jz;
+    rom->op[POP] = op_pop;
+    rom->op[PUSH] = op_push;
+    rom->op[CALL] = op_call;
+    rom->op[JUMP] = op_jump;
+    rom->op[DIS] = op_dis;
+    rom->op[LOAD] = op_load;
+    rom->op[ADD] = op_add;
+    rom->op[RET] = op_ret;
 }
