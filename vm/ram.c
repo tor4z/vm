@@ -10,12 +10,12 @@ struct ram *new_ram()
 	struct ins *ins;
 	ram = (struct ram*)malloc(sizeof(struct ram));
 	if(ram == NULL) {
-		fprintf(stderr, "Can't alloc memory for ram.");
+		fprintf(stderr, "Can't alloc memory for ram.\n");
 		return NULL;
 	}
 	ins = (struct ins*)malloc(sizeof(struct ins) * DEFAULT_INS);
 	if(ins == NULL) {
-		fprintf(stderr, "Can't alloc memory for instruction.");
+		fprintf(stderr, "Can't alloc memory for instruction.\n");
 		return NULL;	
 	}
 	ram->ins = ins
@@ -33,13 +33,13 @@ void load_code(struct ram *ram, const char *filename)
 
 	fp = fopen(filename, "rb");
 	if(fp == NULL) {
-		fprintf(stderr, "Can't open file %s", filename);
+		fprintf(stderr, "Can't open file %s\n", filename);
 	}
 
 	while((n = fread(buff, 1, MAX_RAM, fp))) {
 		total += n;
 		if(total >= MAX_RAM) {
-			fprintf(stderr, "file toot big to read whole file");
+			fprintf(stderr, "file toot big to read whole file\n");
 			break;
 		}
 		memecpy(ram->m, buff, n);
@@ -53,7 +53,7 @@ int get_ins(struct ram *ram, int pos, struct ins *ins)
 {
 
 	if((pos + 2) > MAX_RAM) {
-		fprintf(stderr, "memory overflow");
+		fprintf(stderr, "memory overflow\n");
 		return 1;
 	}
 
