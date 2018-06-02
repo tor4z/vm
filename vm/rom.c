@@ -77,7 +77,7 @@ static void inc_pc(struct cpu *cpu)
 
 static enum addr arg_addressing(char *arg)
 {
-    if((*arg | 0x80) > 0)
+    if((*arg & 0x80) > 0)
         return dire;
     else
         return reg;
