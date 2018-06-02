@@ -11,12 +11,6 @@ struct cpu * new_cpu()
 }
 
 
-void init_cpu(struct cpu *cpu)
-{
-
-}
-
-
 void run_ins(struct cpu *cpu, struct ins *ins)
 {
 
