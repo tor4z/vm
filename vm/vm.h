@@ -54,6 +54,18 @@ enum reg {
 }
 
 
+// Control bus status
+#define LOAD 0x01
+#define STORE 0x02
+
+struct bus {
+	char ab;
+	char db;
+	char cb;
+	struct ram *ram;
+}
+
+
 enum addr {
 	dire = 0x01,
 	reg  = 0x02
@@ -64,6 +76,7 @@ struct cpu {
 	// registers[0] is empty
 	char registers[REG_COUNT + 1];
 	char psw;
+	struct bus *bus;
 };
 
 
@@ -78,6 +91,7 @@ struct ram {
 	char m[MAX_RAM];
 };
 
-char stack[MAX_STACK]
+
+char stack[MAX_STACK];
 
 #endif // _VM_H
