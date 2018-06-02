@@ -86,7 +86,7 @@ static enum addr arg_addressing(char *arg)
 
 static char psw_flag(struct cpu *cpu, char which)
 {
-    return cpu->psw | which;
+    return cpu->psw & which;
 }
 
 
