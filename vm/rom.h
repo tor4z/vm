@@ -27,5 +27,22 @@ struct rom {
 };
 
 void init_rom(struct rom *rom);
+void free_rom(struct rom *rom);
+struct rom *new_rom();
+
+
+int op_add(struct cpu *cpu, struct ins *ins);
+int op_sub(struct cpu *cpu, struct ins *ins);
+int op_mov(struct cpu *cpu, struct ins *ins);
+int op_jz(struct cpu *cpu, struct ins *ins);
+int op_jump(struct cpu *cpu, struct ins *ins);
+int op_pop(struct cpu *cpu, struct ins *ins);
+int op_push(struct cpu *cpu, struct ins *ins);
+int op_call(struct cpu *cpu, struct ins *ins);
+int op_ret(struct cpu *cpu, struct ins *ins);
+int op_dis(struct cpu *cpu, struct ins *ins);
+int op_load(struct cpu *cpu, struct ins *ins);
+int op_store(struct cpu *cpu, struct ins *ins);
+
 
 #endif

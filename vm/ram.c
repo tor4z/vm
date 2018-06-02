@@ -6,19 +6,14 @@
 
 struct ram *new_ram()
 {
-	struct ram ram*;
-	struct ins *ins;
+	struct ram *ram;
 	ram = (struct ram*)malloc(sizeof(struct ram));
 	if(ram == NULL) {
 		fprintf(stderr, "Can't alloc memory for ram.\n");
 		return NULL;
 	}
-	ins = (struct ins*)malloc(sizeof(struct ins) * DEFAULT_INS);
-	if(ins == NULL) {
-		fprintf(stderr, "Can't alloc memory for instruction.\n");
-		return NULL;	
-	}
-	ram->ins = ins
+
+	memset(ram->m, '\0', MAX_RAM);
 	
 	return ram;
 }
@@ -28,7 +23,7 @@ void load_code(struct ram *ram, const char *filename)
 {
 	FILE *fp;
 	size_t n;
-	sizt_t total = 0;
+	size_t total = 0;
 	char buff[MAX_RAM];
 
 	fp = fopen(filename, "rb");
@@ -42,7 +37,7 @@ void load_code(struct ram *ram, const char *filename)
 			fprintf(stderr, "file toot big to read whole file\n");
 			break;
 		}
-		memecpy(ram->m + MAX_STACK, buff, n);
+		memcpy(ram->m + MAX_STACK, buff, n);
 	}
 
 	fclose(fp);
@@ -67,14 +62,14 @@ int get_ins(struct ram *ram, int pos, struct ins *ins)
 
 int ram_load(struct ram *ram, char addr, char *value)
 {
-	*value = ram->m[addr];
+	*value = ram->m[(int)addr];
 	return 0;
 }
 
 
 int ram_store(struct ram *ram, char addr, char value)
 {
-	ram->m[addr] = value;
+	ram->m[(int)addr] = value;
 	return 0;
 }
 

@@ -53,12 +53,12 @@ enum reg {
 	PC = 0x0c,
 	IR = 0x0d,
 	BP = 0x0e
-}
+};
 
 
 // Control bus status
-#define LOAD 0x01   // load data from m to db
-#define STORE 0x02  // store data from db to m
+#define RAM_LOAD 0x01   // load data from m to db
+#define RAM_STORE 0x02  // store data from db to m
 
 
 struct bus {
@@ -66,13 +66,13 @@ struct bus {
 	char db;
 	char cb;
 	struct ram *ram;
-}
+};
 
 
 enum addr {
 	dire = 0x01,
 	reg  = 0x02
-}
+};
 
 
 struct cpu {
@@ -102,5 +102,22 @@ struct vm {
 	struct rom *rom;
 	struct bus *bus;
 };
+
+
+struct ram *new_ram();
+void load_code(struct ram *ram, const char *filename);
+int get_ins(struct ram *ram, int pos, struct ins *ins);
+int ram_load(struct ram *ram, char addr, char *value);
+int ram_store(struct ram *ram, char addr, char value);
+void free_ram(struct ram *ram);
+
+
+struct bus *new_bus();
+void init_bus(struct bus *bus, struct ram *ram);
+
+struct cpu * new_cpu();
+void run_ins(struct cpu *cpu, struct ins *ins);
+void free_cpu(struct cpu *cpu);
+void init_cpu(struct cpu *cpu);
 
 #endif // _VM_H

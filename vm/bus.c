@@ -6,10 +6,10 @@
 struct bus *new_bus()
 {
     struct bus *bus;
-    bus = (struct *bus)malloc(sizeof(struct bus));
+    bus = (struct bus*)malloc(sizeof(struct bus));
     if(bus == NULL) {
         fprintf(stderr, "Can not alloc  memory for bus\n");
-        return NULL
+        return NULL;
     }
 
     bus->ab = '\0';

@@ -3,6 +3,7 @@
 
 int main()
 {
+	/*
 	struct cpu *cpu;
 	struct rom *rom;
 	struct ram *ram;
@@ -12,6 +13,7 @@ int main()
 	ram = new_ram();
 	rom = new_rom();
 	bus = new_bus();
+	*/
 
 	return 0;
 }
