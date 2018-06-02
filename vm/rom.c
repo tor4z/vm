@@ -4,6 +4,7 @@
 #include "vm.h"
 
 
+static int wakeup_bus(struct cpu *cpu);
 static enum addr arg_addressing(char *arg);
 static int get_arg_value(struct cpu* cpu, char *arg);
 static void set_reg_value(struct cpu *cpu, char reg_id, char value);
@@ -22,7 +23,22 @@ static int stack_push(struct cpu *cpu, char value);
 static int set_dr(struct cpu *cpu, char data);
 static int get_dr(strcuct cpu *cpu, char *data);
 
+static char get_bp(struct cpu *cpu);
 static char psw_flag(struct cpu *cpu, char which);
+
+
+static int wakeup_bus(struct cpu *cpu)
+{
+    struct bus *bus = cpu->bus;
+
+    if(bus->cb == LOAD) {
+        // Load data to db from ram
+        return ram_load(bus->ram, bus->ab, &(bus->db));
+    } else if(bus->cb == STORE){
+        // Store data in the db to ram
+        return ram_store(bus->ram, bus->ab, bus->db);
+    }
+}
 
 
 static int arg_value(struct cpu* cpu, char *arg)
@@ -108,11 +124,18 @@ static void dec_sp(struct cpu *cpu)
 static int stack_pop(struct cpu *cpu, char *value)
 {
     char sp = get_sp(cpu);
+    struct bus *bus;
+
     if(sp < 0) {
         fprintf(stderr, "Stack empty\n");
         return 1;
     }
-    *value = stack[sp];
+
+    bus->ad = sp;
+    bus->cb = LOAD;
+    wakeup_bus(cpu);
+    *value = bus->db;
+
     dec_sp(cpu);
     return 0;
 }
@@ -120,13 +143,19 @@ static int stack_pop(struct cpu *cpu, char *value)
 static int stack_push(struct cpu *cpu, char value)
 {
     char sp = get_sp(cpu);
+    struct bus *bus;
     inc_sp(cpu);
 
     if(sp >= MAX_STACK) {
         fprintf(stderr, "Stack full\n");
         return 1;
     }
-    stack[sp] = vlaue;
+    
+    bus->cb = STORE;
+    bus->db = value
+    bus->ab = sp;
+
+    wakeup_bus(cpu);
     return 0;
 }
 
@@ -142,6 +171,12 @@ static int get_dr(strcuct cpu *cpu, char *data)
 {
     *data = cpu->registers[DR_ADDR];
     return 0;
+}
+
+
+static char get_bp(struct cpu *cpu)
+{
+    return cpu->registers[BP_ADDR];
 }
 
 
@@ -258,8 +293,9 @@ int op_load(struct cpu* cpu, struct ins *ins)
     bus = cpu->bus;
 
     bus->cb = LOAD;
-    bus->ab = get_arg_value(ins->arg1);
-    if(wakeup_bus(bus) != 0) {
+    bus->ab = get_bp(cpu) + get_arg_value(ins->arg1);
+
+    if(wakeup_bus(cpu) != 0) {
         fpritnf(stderr, "I/O error\n");
         return 1;
     }
@@ -274,10 +310,10 @@ int op_store(struct cpu* cpu, struct ins *ins)
     bus = cpu->bus;
 
     bus->cb = STORE;
-    bus->ab = get_arg_value(ins->arg1);
+    bus->ab = get_bp(cpu) + get_arg_value(ins->arg1);
     get_dr(cpu, &(bus->db));
 
-    return wakeup_bus(bus);
+    return wakeup_bus(cpu);
 }
 
 
