@@ -21,13 +21,7 @@ struct bus *new_bus()
 }
 
 
-int wakeup_bus(struct bus *bus)
+void init_bus(struct bus *bus, struct ram *ram)
 {
-    if(bus->cb == LOAD) {
-        // Load data to db from ram
-        return ram_load(bus->ram, bus->ab, &(bus->db));
-    } else if(bus->cb == STORE){
-        // Store data in the db to ram
-        return ram_store(bus->ram, bus->ab, bus->db);
-    }
+    bus->ram = ram;
 }
